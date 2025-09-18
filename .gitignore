@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+logs/
+*.log
+.env
+influxdb-data/
+grafana-data/
+.DS_Store

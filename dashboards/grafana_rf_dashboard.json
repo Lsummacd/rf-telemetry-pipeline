@@ -1,0 +1,188 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_INFLUXDB",
+      "label": "InfluxDB",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "influxdb",
+      "pluginName": "InfluxDB"
+    }
+  ],
+  "title": "RF Telemetry Overview",
+  "uid": "rf-telemetry",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "RSSI (dBm)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "targets": [
+        {
+          "query": "\nfrom(bucket: \"rf\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"mqtt_consumer\" and r._field == \"rssi_dbm\")\n  |> group(columns: [\"device_id\"])\n  |> aggregateWindow(every: 5s, fn: mean, createEmpty: false)\n",
+          "refId": "A",
+          "queryType": "flux"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dBm"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "title": "SNR (dB)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "targets": [
+        {
+          "query": "\nfrom(bucket: \"rf\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"mqtt_consumer\" and r._field == \"snr_db\")\n  |> group(columns: [\"device_id\"])\n  |> aggregateWindow(every: 5s, fn: mean, createEmpty: false)\n",
+          "refId": "A",
+          "queryType": "flux"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dB"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "title": "Noise Floor (dBm)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "targets": [
+        {
+          "query": "\nfrom(bucket: \"rf\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"mqtt_consumer\" and r._field == \"noise_floor_dbm\")\n  |> group(columns: [\"device_id\"])\n  |> aggregateWindow(every: 5s, fn: mean, createEmpty: false)\n",
+          "refId": "A",
+          "queryType": "flux"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dBm"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "title": "Occupied Bandwidth (kHz)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "targets": [
+        {
+          "query": "\nfrom(bucket: \"rf\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"mqtt_consumer\" and r._field == \"occupied_bw_hz\")\n  |> map(fn: (r) => ({ r with _value: r._value / 1000.0 }))\n  |> rename(columns: {_value: \"occupied_bw_khz\"})\n  |> group(columns: [\"device_id\"])\n  |> aggregateWindow(every: 5s, fn: mean, createEmpty: false)\n",
+          "refId": "A",
+          "queryType": "flux"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kilohertz"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "title": "End-to-End Latency (ms)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "targets": [
+        {
+          "query": "\nimport \"date\"\nfrom(bucket: \"rf\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"mqtt_consumer\" and r._field == \"t_send_unix_ms\")\n  |> map(fn: (r) => ({\n        r with _value: float(v: uint(v: date.toUnixNano(t: r._time))/1000000.0) - float(v: r._value)\n      }))\n  |> rename(columns: {_value: \"latency_ms\"})\n  |> keep(columns: [\"_time\",\"_value\",\"device_id\"])\n  |> aggregateWindow(every: 5s, fn: mean, createEmpty: false)\n",
+          "refId": "A",
+          "queryType": "flux"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "title": "Packet Loss (%)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "targets": [
+        {
+          "query": "\nseq = from(bucket: \"rf\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r._measurement == \"mqtt_consumer\" and r._field == \"seq\")\n  |> group(columns: [\"device_id\"])\n  |> sort(columns: [\"_time\"])\n  |> difference(nonNegative: true, columns: [\"_value\"])\n  |> map(fn: (r) => ({ r with missing: if r._value > 1.0 then r._value - 1.0 else 0.0 }))\n\nseq\n  |> aggregateWindow(every: 1m, fn: sum, columns: [\"missing\",\"_value\"])\n  |> map(fn: (r) => ({\n        r with _value: if r._value == 0.0 then 0.0 else 100.0 * r.missing / (r._value + r.missing)\n      }))\n  |> rename(columns: {_value: \"loss_pct\"})\n  |> keep(columns: [\"_time\",\"device_id\",\"loss_pct\",\"_value\"])\n",
+          "refId": "A",
+          "queryType": "flux"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "options": {}
+    }
+  ]
+}
